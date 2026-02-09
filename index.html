@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Civil Twilight</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <p class="eyebrow">Civil Twilight</p>
+        <h1>Civil Twilight</h1>
+        <p class="subtitle">
+          Track your location, local time, and the current sky phase in seconds.
+        </p>
+      </header>
+
+      <section class="card" aria-live="polite">
+        <div class="card-row">
+          <h2>Your location</h2>
+          <p id="location-status" class="status">Locating...</p>
+        </div>
+        <dl class="info-grid">
+          <div>
+            <dt>Latitude</dt>
+            <dd id="latitude">--</dd>
+          </div>
+          <div>
+            <dt>Longitude</dt>
+            <dd id="longitude">--</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card" aria-live="polite">
+        <div class="card-row">
+          <h2>Current time</h2>
+          <p class="status" id="time-zone">--</p>
+        </div>
+        <p id="current-time" class="time">--:--:--</p>
+      </section>
+
+      <section class="card" aria-live="polite">
+        <div class="card-row">
+          <h2>Sky phase</h2>
+          <p class="status" id="phase-detail">Awaiting location data.</p>
+        </div>
+        <p id="current-phase" class="phase">--</p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
