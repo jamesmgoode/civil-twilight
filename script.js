@@ -131,7 +131,7 @@ function updateSunPosition(date) {
   const dayProgress = clamp((hours - 6) / 12, 0, 1);
   const altitude = getSunAltitudeEstimate(date);
 
-  const sunX = lerp(12, 88, dayProgress);
+  const sunX = lerp(88, 12, dayProgress);
   const horizonY = 50;
   const maxLift = 28;
   const maxDrop = 12;
