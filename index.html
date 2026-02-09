@@ -52,6 +52,27 @@
         </div>
         <p id="current-phase" class="phase">--</p>
       </section>
+
+      <section class="card test-card" aria-live="polite">
+        <div class="card-row">
+          <h2>Time testing</h2>
+          <p class="status">Manual overrides only.</p>
+        </div>
+        <div class="test-controls">
+          <label class="toggle">
+            <input type="checkbox" id="manual-time-toggle" />
+            Use manual time
+          </label>
+          <label class="time-input">
+            <span>Manual time</span>
+            <input type="time" id="manual-time-input" step="1" />
+          </label>
+          <button class="button" type="button" id="reset-time">
+            Use device time
+          </button>
+        </div>
+        <p class="status" id="manual-time-status">Following device time.</p>
+      </section>
     </main>
 
     <script src="script.js"></script>
