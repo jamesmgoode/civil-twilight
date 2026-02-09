@@ -95,6 +95,21 @@ h1 {
   font-weight: 600;
 }
 
+.next-phase {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.next-phase-label {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.next-phase-countdown {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
 .phase {
   font-size: clamp(1.6rem, 3.5vw, 2.4rem);
   font-weight: 600;
