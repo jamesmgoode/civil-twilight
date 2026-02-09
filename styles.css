@@ -87,8 +87,8 @@ body {
 
 .moon {
   position: absolute;
-  top: 12%;
-  left: clamp(1.5rem, 6vw, 5rem);
+  top: 14%;
+  left: clamp(10rem, 28vw, 22rem);
   width: clamp(60px, 10vw, 110px);
   aspect-ratio: 1;
   border-radius: 50%;
