@@ -11,6 +11,7 @@ const manualTimeToggleEl = document.getElementById("manual-time-toggle");
 const manualTimeInputEl = document.getElementById("manual-time-input");
 const manualTimeStatusEl = document.getElementById("manual-time-status");
 const resetTimeButtonEl = document.getElementById("reset-time");
+const sunEl = document.querySelector(".sun");
 
 const locationState = {
   latitude: null,
@@ -108,6 +109,48 @@ function updateBackground(date) {
     "--bg-end",
     `hsl(${midHue}, 40%, ${endLightness}%)`
   );
+}
+
+function getSunAltitudeEstimate(date) {
+  if (locationState.latitude !== null && locationState.longitude !== null) {
+    return getSolarAltitude(date, locationState.latitude, locationState.longitude);
+  }
+  const hours = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+  const dayProgress = clamp((hours - 6) / 12, 0, 1);
+  if (hours < 6 || hours > 18) {
+    return -12;
+  }
+  return Math.sin(dayProgress * Math.PI) * 45;
+}
+
+function updateSunPosition(date) {
+  if (!sunEl) {
+    return;
+  }
+  const hours = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+  const dayProgress = clamp((hours - 6) / 12, 0, 1);
+  const altitude = getSunAltitudeEstimate(date);
+
+  const sunX = lerp(12, 88, dayProgress);
+  const horizonY = 50;
+  const maxLift = 28;
+  const maxDrop = 12;
+  let sunY = horizonY;
+  if (altitude >= 0) {
+    sunY = horizonY - Math.min(altitude / 60, 1) * maxLift;
+  } else {
+    sunY = horizonY + Math.min(Math.abs(altitude) / 18, 1) * maxDrop;
+  }
+
+  const belowHorizon = altitude < 0;
+  const dimAmount = belowHorizon ? Math.min(Math.abs(altitude) / 18, 1) : 0;
+  const opacity = lerp(1, 0.25, dimAmount);
+  const brightness = lerp(1, 0.35, dimAmount);
+
+  sunEl.style.setProperty("--sun-x", `${sunX}%`);
+  sunEl.style.setProperty("--sun-y", `${sunY}%`);
+  sunEl.style.setProperty("--sun-opacity", opacity.toFixed(2));
+  sunEl.style.setProperty("--sun-brightness", brightness.toFixed(2));
 }
 
 function getJulianDay(date) {
@@ -253,6 +296,7 @@ function updateTime() {
   currentTimeEl.textContent = timeFormatter.format(now);
   updateCountdown();
   updateBackground(now);
+  updateSunPosition(now);
 }
 
 function updatePhase() {
@@ -263,6 +307,7 @@ function updatePhase() {
     phaseState.nextEventTime = null;
     phaseState.nextEventLabel = "--";
     updateCountdown();
+    updateSunPosition(getDisplayDate());
     return;
   }
 
@@ -287,6 +332,7 @@ function updatePhase() {
     nextPhaseLabelEl.textContent = "Next phase: --";
   }
   updateCountdown();
+  updateSunPosition(now);
 }
 
 function updateManualTimeStatus() {
