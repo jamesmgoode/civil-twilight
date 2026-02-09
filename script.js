@@ -3,6 +3,8 @@ const longitudeEl = document.getElementById("longitude");
 const locationStatusEl = document.getElementById("location-status");
 const timeZoneEl = document.getElementById("time-zone");
 const currentTimeEl = document.getElementById("current-time");
+const nextPhaseLabelEl = document.getElementById("next-phase-label");
+const nextPhaseCountdownEl = document.getElementById("next-phase-countdown");
 const currentPhaseEl = document.getElementById("current-phase");
 const phaseDetailEl = document.getElementById("phase-detail");
 
@@ -11,11 +13,22 @@ const locationState = {
   longitude: null,
 };
 
+const phaseState = {
+  nextEventTime: null,
+  nextEventLabel: "--",
+};
+
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
   timeZoneName: "short",
+});
+
+const timeOnlyFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
 });
 
 function formatCoordinate(value, positiveLabel, negativeLabel) {
@@ -90,18 +103,93 @@ function getPhaseDetails(altitude) {
   return "The sun is well below the horizon.";
 }
 
+function getPhaseLabelAt(date, latitude, longitude) {
+  const altitudeNow = getSolarAltitude(date, latitude, longitude);
+  const future = new Date(date.getTime() + 10 * 60 * 1000);
+  const altitudeFuture = getSolarAltitude(future, latitude, longitude);
+  const isRising = altitudeFuture > altitudeNow;
+  return getPhaseLabel(altitudeNow, isRising);
+}
+
+function getNextPhaseEvent(now, latitude, longitude) {
+  const currentLabel = getPhaseLabelAt(now, latitude, longitude);
+  const stepMinutes = 2;
+  let previousTime = now;
+
+  for (let minutes = stepMinutes; minutes <= 24 * 60; minutes += stepMinutes) {
+    const probeTime = new Date(now.getTime() + minutes * 60 * 1000);
+    const probeLabel = getPhaseLabelAt(probeTime, latitude, longitude);
+    if (probeLabel !== currentLabel) {
+      let low = previousTime;
+      let high = probeTime;
+
+      for (let i = 0; i < 24; i += 1) {
+        const midTime = new Date((low.getTime() + high.getTime()) / 2);
+        const midLabel = getPhaseLabelAt(midTime, latitude, longitude);
+        if (midLabel === currentLabel) {
+          low = midTime;
+        } else {
+          high = midTime;
+        }
+      }
+
+      return {
+        label: getPhaseLabelAt(high, latitude, longitude),
+        time: high,
+      };
+    }
+    previousTime = probeTime;
+  }
+
+  return null;
+}
+
+function formatCountdown(targetTime) {
+  if (!targetTime) {
+    return "--";
+  }
+  const diffMs = Math.max(0, targetTime.getTime() - Date.now());
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [];
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  parts.push(`${String(minutes).padStart(2, "0")}m`);
+  parts.push(`${String(seconds).padStart(2, "0")}s`);
+  return `in ${parts.join(" ")}`;
+}
+
+function updateCountdown() {
+  if (!phaseState.nextEventTime) {
+    nextPhaseCountdownEl.textContent = "--";
+    return;
+  }
+  const countdown = formatCountdown(phaseState.nextEventTime);
+  nextPhaseCountdownEl.textContent = `${countdown} (at ${timeOnlyFormatter.format(
+    phaseState.nextEventTime
+  )})`;
+}
+
 function updateTime() {
   const now = new Date();
   const timeParts = timeFormatter.formatToParts(now);
   const tzPart = timeParts.find((part) => part.type === "timeZoneName");
   timeZoneEl.textContent = tzPart ? tzPart.value : "Local time";
   currentTimeEl.textContent = timeFormatter.format(now);
+  updateCountdown();
 }
 
 function updatePhase() {
   if (locationState.latitude === null || locationState.longitude === null) {
     currentPhaseEl.textContent = "--";
     phaseDetailEl.textContent = "Awaiting location data.";
+    nextPhaseLabelEl.textContent = "Next phase: --";
+    phaseState.nextEventTime = null;
+    phaseState.nextEventLabel = "--";
+    updateCountdown();
     return;
   }
 
@@ -114,6 +202,18 @@ function updatePhase() {
   const phaseLabel = getPhaseLabel(altitudeNow, isRising);
   currentPhaseEl.textContent = phaseLabel;
   phaseDetailEl.textContent = getPhaseDetails(altitudeNow);
+
+  const nextEvent = getNextPhaseEvent(now, locationState.latitude, locationState.longitude);
+  if (nextEvent) {
+    phaseState.nextEventTime = nextEvent.time;
+    phaseState.nextEventLabel = nextEvent.label;
+    nextPhaseLabelEl.textContent = `Next phase: ${nextEvent.label}`;
+  } else {
+    phaseState.nextEventTime = null;
+    phaseState.nextEventLabel = "--";
+    nextPhaseLabelEl.textContent = "Next phase: --";
+  }
+  updateCountdown();
 }
 
 function updateLocationDisplay() {
@@ -135,6 +235,8 @@ function handleLocationError(error) {
     error.code === error.PERMISSION_DENIED
       ? "Allow location access to see the current sky phase."
       : "We could not read your location.";
+  nextPhaseLabelEl.textContent = "Next phase: --";
+  nextPhaseCountdownEl.textContent = "--";
 }
 
 function requestLocation() {
