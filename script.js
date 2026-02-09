@@ -100,7 +100,8 @@ function getPhaseDetails(altitude) {
   if (altitude > -18) {
     return "The sky is nearly dark with minimal glow.";
   }
-  return "The sun is well below the horizon.";
+  const roundedAltitude = Math.round(Math.abs(altitude));
+  return `The sun is well below the horizon (about ${roundedAltitude}° below).`;
 }
 
 function getPhaseLabelAt(date, latitude, longitude) {
