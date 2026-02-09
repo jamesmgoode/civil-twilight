@@ -10,6 +10,7 @@
     <div class="sky-visual" aria-hidden="true">
       <div class="horizon"></div>
       <div class="sun"></div>
+      <div class="moon"></div>
     </div>
     <main class="container">
       <header class="hero">
@@ -55,6 +56,14 @@
           <p class="status" id="phase-detail">Awaiting location data.</p>
         </div>
         <p id="current-phase" class="phase">--</p>
+      </section>
+
+      <section class="card" aria-live="polite">
+        <div class="card-row">
+          <h2>Moon phase</h2>
+          <p class="status" id="moon-detail">Awaiting location data.</p>
+        </div>
+        <p id="moon-phase" class="phase">--</p>
       </section>
 
       <section class="card test-card" aria-live="polite">

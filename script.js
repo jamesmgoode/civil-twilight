@@ -7,11 +7,14 @@ const nextPhaseLabelEl = document.getElementById("next-phase-label");
 const nextPhaseCountdownEl = document.getElementById("next-phase-countdown");
 const currentPhaseEl = document.getElementById("current-phase");
 const phaseDetailEl = document.getElementById("phase-detail");
+const moonPhaseEl = document.getElementById("moon-phase");
+const moonDetailEl = document.getElementById("moon-detail");
 const manualTimeToggleEl = document.getElementById("manual-time-toggle");
 const manualTimeInputEl = document.getElementById("manual-time-input");
 const manualTimeStatusEl = document.getElementById("manual-time-status");
 const resetTimeButtonEl = document.getElementById("reset-time");
 const sunEl = document.querySelector(".sun");
+const moonEl = document.querySelector(".moon");
 
 const locationState = {
   latitude: null,
@@ -157,6 +160,14 @@ function getJulianDay(date) {
   return date.getTime() / 86400000 + 2440587.5;
 }
 
+function toJulian(date) {
+  return date.getTime() / 86400000 - 0.5 + 2440588;
+}
+
+function toDays(date) {
+  return toJulian(date) - 2451545;
+}
+
 function getSolarAltitude(date, latitude, longitude) {
   const rad = Math.PI / 180;
   const jd = getJulianDay(date);
@@ -183,6 +194,108 @@ function getSolarAltitude(date, latitude, longitude) {
     ) / rad;
 
   return altitude;
+}
+
+const MOON_RAD = Math.PI / 180;
+const EARTH_OBLIQUITY = MOON_RAD * 23.4397;
+
+function getSunCoords(days) {
+  const meanAnomaly = MOON_RAD * (357.5291 + 0.98560028 * days);
+  const center =
+    MOON_RAD * (1.9148 * Math.sin(meanAnomaly) + 0.02 * Math.sin(2 * meanAnomaly));
+  const perihelion = MOON_RAD * 102.9372;
+  const longitude = meanAnomaly + center + perihelion + Math.PI;
+  return {
+    dec: Math.asin(Math.sin(EARTH_OBLIQUITY) * Math.sin(longitude)),
+    ra: Math.atan2(
+      Math.cos(EARTH_OBLIQUITY) * Math.sin(longitude),
+      Math.cos(longitude)
+    ),
+  };
+}
+
+function getMoonCoords(days) {
+  const meanLongitude = MOON_RAD * (218.316 + 13.176396 * days);
+  const meanAnomaly = MOON_RAD * (134.963 + 13.064993 * days);
+  const meanDistance = MOON_RAD * (93.272 + 13.22935 * days);
+  const longitude = meanLongitude + MOON_RAD * 6.289 * Math.sin(meanAnomaly);
+  const latitude = MOON_RAD * 5.128 * Math.sin(meanDistance);
+  const distance = 385001 - 20905 * Math.cos(meanAnomaly);
+  return {
+    ra: Math.atan2(
+      Math.sin(longitude) * Math.cos(EARTH_OBLIQUITY) -
+        Math.tan(latitude) * Math.sin(EARTH_OBLIQUITY),
+      Math.cos(longitude)
+    ),
+    dec: Math.asin(
+      Math.sin(latitude) * Math.cos(EARTH_OBLIQUITY) +
+        Math.cos(latitude) * Math.sin(EARTH_OBLIQUITY) * Math.sin(longitude)
+    ),
+    dist: distance,
+  };
+}
+
+function getSiderealTime(days, longitude) {
+  return MOON_RAD * (280.16 + 360.9856235 * days) - MOON_RAD * longitude;
+}
+
+function getMoonAltitude(date, latitude, longitude) {
+  const days = toDays(date);
+  const moon = getMoonCoords(days);
+  const hourAngle = getSiderealTime(days, longitude) - moon.ra;
+  const phi = MOON_RAD * latitude;
+  return Math.asin(
+    Math.sin(phi) * Math.sin(moon.dec) +
+      Math.cos(phi) * Math.cos(moon.dec) * Math.cos(hourAngle)
+  );
+}
+
+function getMoonIllumination(date) {
+  const days = toDays(date);
+  const sun = getSunCoords(days);
+  const moon = getMoonCoords(days);
+  const sunDistance = 149598000;
+  const phi = Math.acos(
+    Math.sin(sun.dec) * Math.sin(moon.dec) +
+      Math.cos(sun.dec) * Math.cos(moon.dec) * Math.cos(sun.ra - moon.ra)
+  );
+  const inc = Math.atan2(
+    sunDistance * Math.sin(phi),
+    moon.dist - sunDistance * Math.cos(phi)
+  );
+  const angle = Math.atan2(
+    Math.cos(sun.dec) * Math.sin(sun.ra - moon.ra),
+    Math.sin(sun.dec) * Math.cos(moon.dec) -
+      Math.cos(sun.dec) * Math.sin(moon.dec) * Math.cos(sun.ra - moon.ra)
+  );
+  const fraction = (1 + Math.cos(inc)) / 2;
+  const phase = 0.5 + (inc * (angle < 0 ? -1 : 1)) / (2 * Math.PI);
+  return { fraction, phase };
+}
+
+function getMoonPhaseLabel(phase) {
+  if (phase <= 0.03 || phase >= 0.97) {
+    return "New moon";
+  }
+  if (phase <= 0.22) {
+    return "Waxing crescent";
+  }
+  if (phase <= 0.28) {
+    return "First quarter";
+  }
+  if (phase <= 0.47) {
+    return "Waxing gibbous";
+  }
+  if (phase <= 0.53) {
+    return "Full moon";
+  }
+  if (phase <= 0.72) {
+    return "Waning gibbous";
+  }
+  if (phase <= 0.78) {
+    return "Last quarter";
+  }
+  return "Waning crescent";
 }
 
 function getPhaseLabel(altitude, isRising) {
@@ -306,6 +419,11 @@ function updatePhase() {
     nextPhaseLabelEl.textContent = "Next phase: --";
     phaseState.nextEventTime = null;
     phaseState.nextEventLabel = "--";
+    moonPhaseEl.textContent = "--";
+    moonDetailEl.textContent = "Awaiting location data.";
+    if (moonEl) {
+      moonEl.classList.add("moon--hidden");
+    }
     updateCountdown();
     updateSunPosition(getDisplayDate());
     return;
@@ -333,6 +451,32 @@ function updatePhase() {
   }
   updateCountdown();
   updateSunPosition(now);
+  updateMoonPhase(now);
+}
+
+function updateMoonPhase(date) {
+  if (!moonPhaseEl || !moonDetailEl || !moonEl) {
+    return;
+  }
+  const { fraction, phase } = getMoonIllumination(date);
+  const phaseLabel = getMoonPhaseLabel(phase);
+  const altitude = getMoonAltitude(
+    date,
+    locationState.latitude,
+    locationState.longitude
+  );
+  const isVisible = altitude > 0;
+  const illuminationPercent = Math.round(fraction * 100);
+
+  moonPhaseEl.textContent = phaseLabel;
+  moonDetailEl.textContent = `Illuminated ${illuminationPercent}% · ${
+    isVisible ? "Above horizon" : "Below horizon"
+  }`;
+
+  const phaseDirection = phase <= 0.5 ? 1 : -1;
+  const offset = phaseDirection * fraction;
+  moonEl.style.setProperty("--moon-phase-offset", offset.toFixed(3));
+  moonEl.classList.toggle("moon--hidden", !isVisible);
 }
 
 function updateManualTimeStatus() {

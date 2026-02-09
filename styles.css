@@ -85,6 +85,47 @@ body {
   filter: brightness(var(--sun-brightness));
 }
 
+.moon {
+  position: absolute;
+  top: 12%;
+  left: clamp(1.5rem, 6vw, 5rem);
+  width: clamp(60px, 10vw, 110px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(220, 220, 220, 0.85) 40%,
+    rgba(180, 180, 180, 0.8) 100%
+  );
+  box-shadow: 0 0 20px rgba(220, 220, 220, 0.25),
+    inset -8px -6px 16px rgba(120, 120, 120, 0.35);
+  overflow: hidden;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+  --moon-phase-offset: 0;
+}
+
+.moon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(120, 120, 120, 0.96) 0%,
+    rgba(70, 70, 70, 0.92) 55%,
+    rgba(40, 40, 40, 0.9) 100%
+  );
+  transform: translateX(calc(var(--moon-phase-offset) * 140%));
+  transition: transform 0.6s ease;
+  mix-blend-mode: multiply;
+}
+
+.moon--hidden {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+
 .container {
   max-width: 760px;
   margin: 0 auto;
