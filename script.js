@@ -131,10 +131,10 @@ function updateSunPosition(date) {
     return;
   }
   const hours = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
-  const dayProgress = clamp((hours - 6) / 12, 0, 1);
   const altitude = getSunAltitudeEstimate(date);
 
-  const sunX = lerp(88, 12, dayProgress);
+  const horizontalPhase = Math.sin((hours / 24) * Math.PI * 2);
+  const sunX = 50 + horizontalPhase * 38;
   const horizonY = 50;
   const maxLift = 28;
   const maxDrop = 12;
