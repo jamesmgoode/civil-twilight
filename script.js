@@ -7,10 +7,19 @@ const nextPhaseLabelEl = document.getElementById("next-phase-label");
 const nextPhaseCountdownEl = document.getElementById("next-phase-countdown");
 const currentPhaseEl = document.getElementById("current-phase");
 const phaseDetailEl = document.getElementById("phase-detail");
+const manualTimeToggleEl = document.getElementById("manual-time-toggle");
+const manualTimeInputEl = document.getElementById("manual-time-input");
+const manualTimeStatusEl = document.getElementById("manual-time-status");
+const resetTimeButtonEl = document.getElementById("reset-time");
 
 const locationState = {
   latitude: null,
   longitude: null,
+};
+
+const manualTimeState = {
+  enabled: false,
+  timeString: null,
 };
 
 const phaseState = {
@@ -37,6 +46,68 @@ function formatCoordinate(value, positiveLabel, negativeLabel) {
   }
   const label = value >= 0 ? positiveLabel : negativeLabel;
   return `${Math.abs(value).toFixed(4)}° ${label}`;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function lerp(start, end, progress) {
+  return start + (end - start) * progress;
+}
+
+function formatTwoDigits(value) {
+  return String(value).padStart(2, "0");
+}
+
+function getManualDate() {
+  if (!manualTimeState.enabled || !manualTimeState.timeString) {
+    return null;
+  }
+  const now = new Date();
+  const [hours, minutes, seconds] = manualTimeState.timeString
+    .split(":")
+    .map((part) => Number(part));
+  const manualDate = new Date(now);
+  manualDate.setHours(hours || 0, minutes || 0, seconds || 0, 0);
+  return manualDate;
+}
+
+function getDisplayDate() {
+  return getManualDate() || new Date();
+}
+
+function getDaylightProgress(date) {
+  const hours = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+  const dayProgress = (hours - 6) / 12;
+  const clamped = clamp(dayProgress, 0, 1);
+  const isDaytime = hours >= 6 && hours <= 18;
+  if (!isDaytime) {
+    return 0;
+  }
+  return Math.sin(clamped * Math.PI);
+}
+
+function updateBackground(date) {
+  const progress = getDaylightProgress(date);
+  const hue = lerp(222, 200, progress);
+  const midHue = lerp(222, 210, progress);
+  const lightness = lerp(14, 46, progress);
+  const midLightness = lerp(10, 32, progress);
+  const endLightness = lerp(6, 20, progress);
+
+  document.documentElement.style.setProperty(
+    "--bg-start",
+    `hsl(${hue}, 42%, ${lightness}%)`
+  );
+  document.documentElement.style.setProperty(
+    "--bg-mid",
+    `hsl(${midHue}, 36%, ${midLightness}%)`
+  );
+  document.documentElement.style.setProperty(
+    "--bg-end",
+    `hsl(${midHue}, 40%, ${endLightness}%)`
+  );
 }
 
 function getJulianDay(date) {
@@ -145,11 +216,11 @@ function getNextPhaseEvent(now, latitude, longitude) {
   return null;
 }
 
-function formatCountdown(targetTime) {
+function formatCountdown(targetTime, now) {
   if (!targetTime) {
     return "--";
   }
-  const diffMs = Math.max(0, targetTime.getTime() - Date.now());
+  const diffMs = Math.max(0, targetTime.getTime() - now.getTime());
   const totalSeconds = Math.floor(diffMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -168,19 +239,20 @@ function updateCountdown() {
     nextPhaseCountdownEl.textContent = "--";
     return;
   }
-  const countdown = formatCountdown(phaseState.nextEventTime);
+  const countdown = formatCountdown(phaseState.nextEventTime, getDisplayDate());
   nextPhaseCountdownEl.textContent = `${countdown} (at ${timeOnlyFormatter.format(
     phaseState.nextEventTime
   )})`;
 }
 
 function updateTime() {
-  const now = new Date();
-  const timeParts = timeFormatter.formatToParts(now);
+  const now = getDisplayDate();
+  const timeParts = timeFormatter.formatToParts(new Date());
   const tzPart = timeParts.find((part) => part.type === "timeZoneName");
   timeZoneEl.textContent = tzPart ? tzPart.value : "Local time";
   currentTimeEl.textContent = timeFormatter.format(now);
   updateCountdown();
+  updateBackground(now);
 }
 
 function updatePhase() {
@@ -194,7 +266,7 @@ function updatePhase() {
     return;
   }
 
-  const now = new Date();
+  const now = getDisplayDate();
   const altitudeNow = getSolarAltitude(now, locationState.latitude, locationState.longitude);
   const future = new Date(now.getTime() + 10 * 60 * 1000);
   const altitudeFuture = getSolarAltitude(future, locationState.latitude, locationState.longitude);
@@ -215,6 +287,46 @@ function updatePhase() {
     nextPhaseLabelEl.textContent = "Next phase: --";
   }
   updateCountdown();
+}
+
+function updateManualTimeStatus() {
+  if (manualTimeState.enabled && manualTimeState.timeString) {
+    manualTimeStatusEl.textContent = `Manual time set to ${manualTimeState.timeString}.`;
+  } else if (manualTimeState.enabled) {
+    manualTimeStatusEl.textContent = "Manual time enabled. Choose a time to preview.";
+  } else {
+    manualTimeStatusEl.textContent = "Following device time.";
+  }
+}
+
+function handleManualToggle() {
+  manualTimeState.enabled = manualTimeToggleEl.checked;
+  updateManualTimeStatus();
+  updateTime();
+  updatePhase();
+}
+
+function handleManualTimeInput() {
+  if (!manualTimeInputEl.value) {
+    const now = new Date();
+    manualTimeInputEl.value = `${formatTwoDigits(now.getHours())}:${formatTwoDigits(
+      now.getMinutes()
+    )}:${formatTwoDigits(now.getSeconds())}`;
+  }
+  manualTimeState.timeString = manualTimeInputEl.value;
+  updateManualTimeStatus();
+  updateTime();
+  updatePhase();
+}
+
+function resetManualTime() {
+  manualTimeState.enabled = false;
+  manualTimeState.timeString = null;
+  manualTimeToggleEl.checked = false;
+  manualTimeInputEl.value = "";
+  updateManualTimeStatus();
+  updateTime();
+  updatePhase();
 }
 
 function updateLocationDisplay() {
@@ -253,3 +365,8 @@ updatePhase();
 requestLocation();
 setInterval(updateTime, 1000);
 setInterval(updatePhase, 60000);
+
+manualTimeToggleEl.addEventListener("change", handleManualToggle);
+manualTimeInputEl.addEventListener("input", handleManualTimeInput);
+resetTimeButtonEl.addEventListener("click", resetManualTime);
+updateManualTimeStatus();
