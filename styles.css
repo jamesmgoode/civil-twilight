@@ -278,3 +278,33 @@ h1 {
     align-items: flex-start;
   }
 }
+
+.cookie-banner {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(420px, calc(100vw - 2rem));
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(9, 12, 24, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 5;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.cookie-banner p {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.cookie-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.button--ghost {
+  background: transparent;
+}

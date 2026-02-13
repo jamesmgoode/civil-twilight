@@ -16,6 +16,15 @@ const resetTimeButtonEl = document.getElementById("reset-time");
 const sunEl = document.querySelector(".sun");
 const moonEl = document.querySelector(".moon");
 
+const COOKIE_CONSENT_KEY = "cookieConsent";
+const GA_MEASUREMENT_ID = "G-VPGT2PJPF8";
+
+const cookieBannerEl = document.getElementById("cookie-banner");
+const cookieAcceptEl = document.getElementById("cookie-accept");
+const cookieDeclineEl = document.getElementById("cookie-decline");
+
+let analyticsLoaded = false;
+
 const locationState = {
   latitude: null,
   longitude: null,
@@ -43,6 +52,61 @@ const timeOnlyFormatter = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
   second: "2-digit",
 });
+
+
+function loadAnalytics() {
+  if (analyticsLoaded) {
+    return;
+  }
+  analyticsLoaded = true;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function gtag() {
+    window.dataLayer.push(arguments);
+  };
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+
+  window.gtag("js", new Date());
+  window.gtag("config", GA_MEASUREMENT_ID);
+}
+
+function setCookieConsent(value) {
+  localStorage.setItem(COOKIE_CONSENT_KEY, value);
+}
+
+function hideCookieBanner() {
+  if (!cookieBannerEl) {
+    return;
+  }
+  cookieBannerEl.hidden = true;
+}
+
+function showCookieBanner() {
+  if (!cookieBannerEl) {
+    return;
+  }
+  cookieBannerEl.hidden = false;
+}
+
+function initializeCookieConsent() {
+  const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
+
+  if (consent === "accepted") {
+    loadAnalytics();
+    hideCookieBanner();
+    return;
+  }
+
+  if (consent === "declined") {
+    hideCookieBanner();
+    return;
+  }
+
+  showCookieBanner();
+}
 
 function formatCoordinate(value, positiveLabel, negativeLabel) {
   if (value === null) {
@@ -560,3 +624,19 @@ manualTimeToggleEl.addEventListener("change", handleManualToggle);
 manualTimeInputEl.addEventListener("input", handleManualTimeInput);
 resetTimeButtonEl.addEventListener("click", resetManualTime);
 updateManualTimeStatus();
+initializeCookieConsent();
+
+if (cookieAcceptEl) {
+  cookieAcceptEl.addEventListener("click", () => {
+    setCookieConsent("accepted");
+    loadAnalytics();
+    hideCookieBanner();
+  });
+}
+
+if (cookieDeclineEl) {
+  cookieDeclineEl.addEventListener("click", () => {
+    setCookieConsent("declined");
+    hideCookieBanner();
+  });
+}

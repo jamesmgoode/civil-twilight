@@ -5,15 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Civil Twilight</title>
     <link rel="stylesheet" href="styles.css" />
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VPGT2PJPF8"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-VPGT2PJPF8');
-    </script>
   </head>
   <body>
     <div class="sky-visual" aria-hidden="true">
@@ -96,6 +87,16 @@
         <p class="status" id="manual-time-status">Following device time.</p>
       </section>
     </main>
+
+    <aside class="cookie-banner" id="cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie consent" hidden>
+      <p>
+        We use optional analytics cookies to understand how Civil Twilight is used.
+      </p>
+      <div class="cookie-actions">
+        <button class="button" type="button" id="cookie-accept">Accept analytics</button>
+        <button class="button button--ghost" type="button" id="cookie-decline">Decline</button>
+      </div>
+    </aside>
 
     <script src="script.js"></script>
   </body>
