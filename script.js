@@ -91,17 +91,25 @@ function showCookieBanner() {
   cookieBannerEl.hidden = false;
 }
 
+function dismissCookieBanner() {
+  if (!cookieBannerEl) {
+    return;
+  }
+  cookieBannerEl.hidden = true;
+  cookieBannerEl.remove();
+}
+
 function initializeCookieConsent() {
   const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
 
   if (consent === "accepted") {
     loadAnalytics();
-    hideCookieBanner();
+    dismissCookieBanner();
     return;
   }
 
   if (consent === "declined") {
-    hideCookieBanner();
+    dismissCookieBanner();
     return;
   }
 
@@ -630,13 +638,13 @@ if (cookieAcceptEl) {
   cookieAcceptEl.addEventListener("click", () => {
     setCookieConsent("accepted");
     loadAnalytics();
-    hideCookieBanner();
+    dismissCookieBanner();
   });
 }
 
 if (cookieDeclineEl) {
   cookieDeclineEl.addEventListener("click", () => {
     setCookieConsent("declined");
-    hideCookieBanner();
+    dismissCookieBanner();
   });
 }
